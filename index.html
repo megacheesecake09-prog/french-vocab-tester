@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f3b57">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="French Vocab">
+  <title>GCSE French Vocabulary Tester</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Pearson Edexcel GCSE French (2024)</p>
+        <h1>French Vocabulary Tester</h1>
+        <p class="hero-copy">
+          Practice the official vocabulary with flashcards, written answers, multiple choice,
+          mixed directions, starred words, and an optional challenge mode.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <button id="installButton" class="ghost-button hidden" type="button">Install app</button>
+        <button id="resetAppButton" class="ghost-button" type="button">Reset progress</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel settings-panel">
+        <div class="panel-heading">
+          <h2>Configure Test</h2>
+          <p>Choose the tier, question style, direction and the word groups you want to practise.</p>
+        </div>
+
+        <div class="controls-grid">
+          <label class="field">
+            <span>Tier</span>
+            <select id="tierSelect">
+              <option value="higher">Higher</option>
+              <option value="foundation">Foundation</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Study mode</span>
+            <select id="studyModeSelect">
+              <option value="written">Written answers</option>
+              <option value="multiple-choice">Multiple choice</option>
+              <option value="flashcards">Flashcards</option>
+              <option value="mixed">Mixed written and multiple choice</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Direction</span>
+            <select id="directionSelect">
+              <option value="fr-en">French to English</option>
+              <option value="en-fr">English to French</option>
+              <option value="mixed">Mixed directions</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Session type</span>
+            <select id="sessionTypeSelect">
+              <option value="practice">Practice</option>
+              <option value="challenge">Challenge</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Word limit</span>
+            <input id="wordLimitInput" type="number" min="5" max="5000" step="1" value="25">
+          </label>
+
+          <label class="field">
+            <span>Start letters</span>
+            <div class="inline-inputs">
+              <input id="startLettersFrom" type="text" maxlength="2" placeholder="A">
+              <span>to</span>
+              <input id="startLettersTo" type="text" maxlength="2" placeholder="Z">
+            </div>
+          </label>
+        </div>
+
+        <div class="toggle-grid">
+          <label class="toggle">
+            <input id="shuffleToggle" type="checkbox" checked>
+            <span>Shuffle words</span>
+          </label>
+          <label class="toggle">
+            <input id="hardModeToggle" type="checkbox">
+            <span>Hard difficulty</span>
+          </label>
+          <label class="toggle">
+            <input id="extremeModeToggle" type="checkbox">
+            <span>Extreme difficulty</span>
+          </label>
+          <label class="toggle">
+            <input id="accentToggle" type="checkbox">
+            <span>Require accents exactly</span>
+          </label>
+          <label class="toggle">
+            <input id="htOnlyToggle" type="checkbox">
+            <span>Higher-only vocabulary only</span>
+          </label>
+          <label class="toggle">
+            <input id="starredOnlyToggle" type="checkbox">
+            <span>Starred words only</span>
+          </label>
+        </div>
+
+        <div class="filter-block">
+          <div class="filter-header">
+            <h3>Subject Filters</h3>
+            <div class="mini-actions">
+              <button id="selectAllSubjectsButton" type="button">Select all</button>
+              <button id="clearSubjectsButton" type="button">Clear</button>
+            </div>
+          </div>
+          <div id="subjectFilters" class="chip-grid"></div>
+        </div>
+
+        <div class="filter-block">
+          <div class="filter-header">
+            <h3>Part of Speech</h3>
+            <div class="mini-actions">
+              <button id="selectAllPosButton" type="button">Select all</button>
+              <button id="clearPosButton" type="button">Clear</button>
+            </div>
+          </div>
+          <div id="posFilters" class="chip-grid compact"></div>
+        </div>
+
+        <div class="summary-row">
+          <div class="summary-card">
+            <span class="summary-label">Words selected</span>
+            <strong id="selectedCount">0</strong>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Starred</span>
+            <strong id="starredCount">0</strong>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Focus list</span>
+            <strong id="focusCount">0</strong>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="beginSessionButton" class="primary-button" type="button">Begin test</button>
+          <button id="flashcardButton" class="secondary-button" type="button">Practice flashcards</button>
+          <button id="viewWordsButton" class="secondary-button" type="button">View selected words</button>
+          <button id="tryIncorrectButton" class="secondary-button" type="button">Try incorrect words</button>
+        </div>
+      </section>
+
+      <section class="panel session-panel">
+        <div id="sessionEmptyState" class="empty-state">
+          <h2>Ready when you are</h2>
+          <p>
+            Start a session to practise French vocabulary from the Pearson Edexcel spreadsheet.
+            Your starred words, focus list and local challenge scores are saved in this browser.
+          </p>
+        </div>
+
+        <div id="sessionView" class="hidden">
+          <div class="session-topbar">
+            <div>
+              <p id="sessionBadge" class="eyebrow">Practice</p>
+              <h2 id="sessionTitle">Current question</h2>
+            </div>
+            <div class="session-metrics">
+              <div class="metric"><span>Progress</span><strong id="progressLabel">0/0</strong></div>
+              <div class="metric"><span>Score</span><strong id="scoreLabel">0</strong></div>
+              <div class="metric"><span>Time</span><strong id="timerLabel">--</strong></div>
+            </div>
+          </div>
+
+          <div class="question-card">
+            <div class="question-meta">
+              <span id="questionSubject" class="tag"></span>
+              <span id="questionPartOfSpeech" class="tag"></span>
+              <span id="questionTier" class="tag"></span>
+            </div>
+            <p id="directionLabel" class="direction-label"></p>
+            <div id="promptText" class="prompt-text"></div>
+            <p id="hintText" class="hint-text"></p>
+
+            <div id="writtenAnswerPanel" class="answer-panel">
+              <label class="field">
+                <span>Your answer</span>
+                <input id="answerInput" type="text" autocomplete="off" spellcheck="false">
+              </label>
+              <div class="action-row">
+                <button id="checkAnswerButton" class="primary-button" type="button">Check answer</button>
+                <button id="revealAnswerButton" class="secondary-button" type="button">Reveal answer</button>
+                <button id="starWordButton" class="ghost-button" type="button">Star</button>
+              </div>
+            </div>
+
+            <div id="multipleChoicePanel" class="answer-panel hidden">
+              <div id="multipleChoiceOptions" class="options-grid"></div>
+              <div class="action-row">
+                <button id="starWordButtonChoice" class="ghost-button" type="button">Star</button>
+              </div>
+            </div>
+
+            <div id="flashcardPanel" class="answer-panel hidden">
+              <div id="flashcardBack" class="flashcard-answer">Tap or press Enter to reveal the answer.</div>
+              <div class="action-row">
+                <button id="flipFlashcardButton" class="primary-button" type="button">Flip card</button>
+                <button id="previousFlashcardButton" class="secondary-button" type="button">Previous</button>
+                <button id="nextFlashcardButton" class="secondary-button" type="button">Next</button>
+                <button id="starWordButtonFlashcard" class="ghost-button" type="button">Star</button>
+              </div>
+            </div>
+
+            <div id="feedbackBox" class="feedback-box hidden"></div>
+          </div>
+
+          <div class="footer-actions">
+            <button id="switchTableButton" class="secondary-button" type="button">Show table</button>
+            <button id="resetSessionButton" class="ghost-button" type="button">Reset test</button>
+          </div>
+        </div>
+
+        <div id="tableView" class="hidden">
+          <div class="table-header">
+            <div>
+              <p class="eyebrow">Selected vocabulary</p>
+              <h2>Table view</h2>
+            </div>
+            <div class="action-row">
+              <button id="returnToSessionButton" class="secondary-button" type="button">Return to test</button>
+              <button id="exportIncorrectButton" class="ghost-button" type="button">Export focus list</button>
+              <label class="ghost-button file-button">
+                Import focus list
+                <input id="importFocusInput" type="file" accept=".json,.csv">
+              </label>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>French</th>
+                  <th>English</th>
+                  <th>Subject</th>
+                  <th>Part of speech</th>
+                  <th>Tier</th>
+                  <th>Starred</th>
+                </tr>
+              </thead>
+              <tbody id="wordsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="leaderboardView" class="leaderboard hidden">
+          <div class="table-header">
+            <div>
+              <p class="eyebrow">Challenge mode</p>
+              <h2>Local leaderboard</h2>
+            </div>
+          </div>
+          <ol id="leaderboardList"></ol>
+          <form id="leaderboardForm" class="leaderboard-form">
+            <label class="field">
+              <span>Add your name</span>
+              <input id="leaderboardNameInput" type="text" maxlength="24" placeholder="Your name">
+            </label>
+            <button class="primary-button" type="submit">Save score</button>
+          </form>
+        </div>
+      </section>
+
+      <aside class="panel sidebar-panel">
+        <div class="panel-heading">
+          <h2>Words To Focus On</h2>
+          <p>Words you missed, revealed or starred appear here.</p>
+        </div>
+        <div class="action-row">
+          <button id="exportSidebarButton" class="secondary-button" type="button">Export</button>
+          <button id="clearFocusButton" class="ghost-button" type="button">Clear focus list</button>
+          <button id="clearStarredButton" class="ghost-button" type="button">Clear starred</button>
+        </div>
+        <ul id="focusList" class="focus-list"></ul>
+      </aside>
+    </main>
+  </div>
+
+  <script src="./data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
