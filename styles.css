@@ -291,6 +291,7 @@ select {
   border-radius: 20px;
   background: var(--panel-strong);
   border: 1px solid rgba(15, 59, 87, 0.1);
+  scroll-margin-top: 18px;
 }
 
 .question-meta {
@@ -357,7 +358,7 @@ select {
 }
 
 .feedback-box {
-  margin-top: 18px;
+  margin: 16px 0 14px;
   padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid transparent;
@@ -471,7 +472,7 @@ th {
 
 @media (max-width: 700px) {
   .page-shell {
-    padding: 20px 14px 30px;
+    padding: 16px 12px calc(96px + env(safe-area-inset-bottom));
   }
 
   .hero,
@@ -499,7 +500,7 @@ th {
   }
 
   .question-card {
-    padding: 18px;
+    padding: 16px;
   }
 
   .primary-button,
@@ -518,6 +519,7 @@ th {
   .field input,
   .field select {
     font-size: 16px;
+    padding: 14px 15px;
   }
 
   .toggle {
@@ -535,6 +537,22 @@ th {
 
   .table-wrap {
     max-height: 420px;
+  }
+
+  .feedback-box {
+    position: sticky;
+    top: 8px;
+    z-index: 2;
+    font-size: 1rem;
+    box-shadow: 0 10px 24px rgba(15, 59, 87, 0.12);
+  }
+
+  .writtenAnswerPanel .action-row {
+    position: sticky;
+    bottom: 0;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(255, 250, 241, 0), rgba(255, 250, 241, 0.96) 32%);
+    z-index: 1;
   }
 }
 
@@ -556,11 +574,20 @@ th {
     font-size: 1.7rem;
   }
 
+  .direction-label,
+  .hint-text {
+    font-size: 0.95rem;
+  }
+
   .question-meta {
     gap: 6px;
   }
 
   .tag {
     font-size: 0.76rem;
+  }
+
+  .feedback-box {
+    top: 4px;
   }
 }

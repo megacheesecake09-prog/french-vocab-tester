@@ -1,4 +1,4 @@
-const CACHE_NAME = "french-vocab-tester-v1";
+const CACHE_NAME = "french-vocab-tester-v2";
 const APP_SHELL = [
   "./",
   "./index.html",

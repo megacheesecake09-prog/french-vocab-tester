@@ -168,6 +168,48 @@ function simplifyEnglishAnswer(value) {
     .trim();
 }
 
+function stripParentheticalText(value) {
+  return String(value).replace(/\([^)]*\)/g, " ");
+}
+
+function addPluralLenientVariants(accepted, value) {
+  if (!value) {
+    return;
+  }
+
+  accepted.add(value);
+
+  const parts = value.split(" ");
+  const lastWord = parts[parts.length - 1];
+  if (!lastWord) {
+    return;
+  }
+
+  const stems = new Set([lastWord]);
+  if (lastWord.endsWith("ies") && lastWord.length > 3) {
+    stems.add(`${lastWord.slice(0, -3)}y`);
+  }
+  if (lastWord.endsWith("es") && lastWord.length > 2) {
+    stems.add(lastWord.slice(0, -2));
+  }
+  if (lastWord.endsWith("s") && lastWord.length > 1) {
+    stems.add(lastWord.slice(0, -1));
+  }
+  if (!lastWord.endsWith("s")) {
+    stems.add(`${lastWord}s`);
+  }
+  if (lastWord.endsWith("y")) {
+    stems.add(`${lastWord.slice(0, -1)}ies`);
+  }
+
+  stems.forEach((stem) => {
+    const rebuilt = [...parts.slice(0, -1), stem].join(" ").trim();
+    if (rebuilt) {
+      accepted.add(rebuilt);
+    }
+  });
+}
+
 function buildAcceptedAnswers(answer, direction, requireAccents) {
   const rawAnswers = splitAnswers(answer);
   const accepted = new Set();
@@ -179,10 +221,9 @@ function buildAcceptedAnswers(answer, direction, requireAccents) {
     }
 
     if (direction === "fr-en") {
-      const simplified = simplifyEnglishAnswer(option);
-      if (simplified) {
-        accepted.add(simplified);
-      }
+      addPluralLenientVariants(accepted, simplifyEnglishAnswer(option));
+      addPluralLenientVariants(accepted, simplifyEnglishAnswer(stripParentheticalText(option)));
+      addPluralLenientVariants(accepted, normalizeText(stripParentheticalText(option), false));
     }
   });
 
@@ -203,6 +244,15 @@ function getPosList() {
   return dedupe(getAllForTier(state.filters.tier).map((item) => item.partOfSpeech)).sort((a, b) =>
     a.localeCompare(b),
   );
+}
+
+function isPracticeVerb(item) {
+  if (item.partOfSpeech !== "v") {
+    return true;
+  }
+
+  // The Pearson sheet includes many conjugated helper forms; keep normal practice to infinitives.
+  return item.english.toLowerCase().startsWith("to ");
 }
 
 function ensureFilterDefaults() {
@@ -255,6 +305,9 @@ function renderFilters() {
 
 function getFilteredWords() {
   const words = getAllForTier(state.filters.tier).filter((item) => {
+    if (!isPracticeVerb(item)) {
+      return false;
+    }
     if (!state.filters.subjects.has(item.subject)) {
       return false;
     }
@@ -639,6 +692,7 @@ function revealAnswer() {
   }
   const word = getCurrentWord();
   const qa = getPromptAndAnswer(word);
+  elements.answerInput.blur();
   recordFocus(word, "Answer revealed");
   showFeedback("warning", `Answer revealed: ${qa.answer}`);
 }
@@ -700,6 +754,9 @@ function showFeedback(type, message) {
   elements.feedbackBox.className = `feedback-box ${type}`;
   elements.feedbackBox.textContent = message;
   elements.feedbackBox.classList.remove("hidden");
+  window.requestAnimationFrame(() => {
+    elements.feedbackBox.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function hideFeedback() {
@@ -946,6 +1003,11 @@ function wireEvents() {
     if (event.key === "Enter") {
       checkWrittenAnswer();
     }
+  });
+  elements.answerInput.addEventListener("focus", () => {
+    window.setTimeout(() => {
+      elements.answerInput.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 250);
   });
   elements.resetAppButton.addEventListener("click", resetProgress);
 
