@@ -246,13 +246,52 @@ function getPosList() {
   );
 }
 
+function getFrenchLemma(french) {
+  return String(french)
+    .split("|")[0]
+    .trim()
+    .replace(/[*!…]/g, "")
+    .replace(/\s*!$/, "")
+    .split(/\s+/)[0]
+    .toLowerCase();
+}
+
+function isLikelyFrenchInfinitive(lemma) {
+  if (!lemma) {
+    return false;
+  }
+
+  const irregularInfinitives = new Set([
+    "avoir",
+    "etre",
+    "être",
+    "aller",
+    "faire",
+    "pouvoir",
+    "vouloir",
+    "devoir",
+    "voir",
+    "savoir",
+    "falloir",
+    "pleuvoir",
+  ]);
+
+  if (irregularInfinitives.has(lemma)) {
+    return true;
+  }
+
+  return /(er|ir|re|oir)$/.test(lemma);
+}
+
 function isPracticeVerb(item) {
   if (item.partOfSpeech !== "v") {
     return true;
   }
 
-  // The Pearson sheet includes many conjugated helper forms; keep normal practice to infinitives.
-  return item.english.toLowerCase().startsWith("to ");
+  // The Pearson sheet includes many conjugated forms; keep normal practice to infinitives only.
+  const english = item.english.toLowerCase();
+  const lemma = getFrenchLemma(item.french);
+  return english.startsWith("to ") || isLikelyFrenchInfinitive(lemma);
 }
 
 function ensureFilterDefaults() {
