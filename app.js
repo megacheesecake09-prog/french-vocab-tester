@@ -156,6 +156,10 @@ function normalizeText(value, requireAccents) {
 }
 
 function splitAnswers(value) {
+  return splitTopLevel(value, new Set([";", "|"]));
+}
+
+function splitTopLevel(value, delimiters) {
   const input = String(value);
   const items = [];
   let current = "";
@@ -172,7 +176,7 @@ function splitAnswers(value) {
       current += character;
       continue;
     }
-    if ((character === ";" || character === "|") && depth === 0) {
+    if (delimiters.has(character) && depth === 0) {
       if (current.trim()) {
         items.push(current.trim());
       }
@@ -207,6 +211,45 @@ function stripExampleText(value) {
     .replace(/\+\s*(noun|nouns|verb|verbs|adjective|adjectives|adverb|adverbs|-ing)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function splitEnglishAlternatives(value) {
+  const pieces = new Set([String(value).trim()]);
+
+  splitTopLevel(value, new Set([",", "/"])).forEach((part) => pieces.add(part));
+
+  String(value)
+    .split(/\bor\b/gi)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .forEach((part) => pieces.add(part));
+
+  return [...pieces].filter(Boolean);
+}
+
+function collectEnglishLenientForms(value) {
+  const variants = new Set();
+  const baseForms = [
+    value,
+    stripParentheticalText(value),
+    stripExampleText(value),
+    stripExampleText(stripParentheticalText(value)),
+  ];
+
+  baseForms.forEach((form) => {
+    splitEnglishAlternatives(form).forEach((alternative) => {
+      const simplified = simplifyEnglishAnswer(alternative);
+      const normalized = normalizeText(alternative, false);
+      if (simplified) {
+        addPluralLenientVariants(variants, simplified);
+      }
+      if (normalized) {
+        addPluralLenientVariants(variants, normalized);
+      }
+    });
+  });
+
+  return variants;
 }
 
 function addPluralLenientVariants(accepted, value) {
@@ -258,14 +301,7 @@ function buildAcceptedAnswers(answer, direction, requireAccents) {
     }
 
     if (direction === "fr-en") {
-      addPluralLenientVariants(accepted, simplifyEnglishAnswer(option));
-      addPluralLenientVariants(accepted, simplifyEnglishAnswer(stripParentheticalText(option)));
-      addPluralLenientVariants(
-        accepted,
-        simplifyEnglishAnswer(stripExampleText(stripParentheticalText(option))),
-      );
-      addPluralLenientVariants(accepted, simplifyEnglishAnswer(stripExampleText(option)));
-      addPluralLenientVariants(accepted, normalizeText(stripParentheticalText(option), false));
+      collectEnglishLenientForms(option).forEach((variant) => accepted.add(variant));
     }
   });
 
