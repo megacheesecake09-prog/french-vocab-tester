@@ -85,15 +85,18 @@ const elements = {
   answerInput: document.getElementById("answerInput"),
   checkAnswerButton: document.getElementById("checkAnswerButton"),
   revealAnswerButton: document.getElementById("revealAnswerButton"),
+  skipWordButton: document.getElementById("skipWordButton"),
   starWordButton: document.getElementById("starWordButton"),
   multipleChoicePanel: document.getElementById("multipleChoicePanel"),
   multipleChoiceOptions: document.getElementById("multipleChoiceOptions"),
+  skipWordButtonChoice: document.getElementById("skipWordButtonChoice"),
   starWordButtonChoice: document.getElementById("starWordButtonChoice"),
   flashcardPanel: document.getElementById("flashcardPanel"),
   flashcardBack: document.getElementById("flashcardBack"),
   flipFlashcardButton: document.getElementById("flipFlashcardButton"),
   previousFlashcardButton: document.getElementById("previousFlashcardButton"),
   nextFlashcardButton: document.getElementById("nextFlashcardButton"),
+  skipWordButtonFlashcard: document.getElementById("skipWordButtonFlashcard"),
   starWordButtonFlashcard: document.getElementById("starWordButtonFlashcard"),
   feedbackBox: document.getElementById("feedbackBox"),
   switchTableButton: document.getElementById("switchTableButton"),
@@ -153,12 +156,37 @@ function normalizeText(value, requireAccents) {
 }
 
 function splitAnswers(value) {
-  return dedupe(
-    String(value)
-      .split(/[;/]/)
-      .flatMap((chunk) => chunk.split(","))
-      .map((chunk) => chunk.trim())
-  );
+  const input = String(value);
+  const items = [];
+  let current = "";
+  let depth = 0;
+
+  for (const character of input) {
+    if (character === "(") {
+      depth += 1;
+      current += character;
+      continue;
+    }
+    if (character === ")") {
+      depth = Math.max(0, depth - 1);
+      current += character;
+      continue;
+    }
+    if ((character === ";" || character === "|") && depth === 0) {
+      if (current.trim()) {
+        items.push(current.trim());
+      }
+      current = "";
+      continue;
+    }
+    current += character;
+  }
+
+  if (current.trim()) {
+    items.push(current.trim());
+  }
+
+  return dedupe(items);
 }
 
 function simplifyEnglishAnswer(value) {
@@ -170,6 +198,15 @@ function simplifyEnglishAnswer(value) {
 
 function stripParentheticalText(value) {
   return String(value).replace(/\([^)]*\)/g, " ");
+}
+
+function stripExampleText(value) {
+  return String(value)
+    .replace(/\be\.g\.[^,)]+/gi, " ")
+    .replace(/\bfor example\b[^,)]+/gi, " ")
+    .replace(/\+\s*(noun|nouns|verb|verbs|adjective|adjectives|adverb|adverbs|-ing)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function addPluralLenientVariants(accepted, value) {
@@ -223,6 +260,11 @@ function buildAcceptedAnswers(answer, direction, requireAccents) {
     if (direction === "fr-en") {
       addPluralLenientVariants(accepted, simplifyEnglishAnswer(option));
       addPluralLenientVariants(accepted, simplifyEnglishAnswer(stripParentheticalText(option)));
+      addPluralLenientVariants(
+        accepted,
+        simplifyEnglishAnswer(stripExampleText(stripParentheticalText(option))),
+      );
+      addPluralLenientVariants(accepted, simplifyEnglishAnswer(stripExampleText(option)));
       addPluralLenientVariants(accepted, normalizeText(stripParentheticalText(option), false));
     }
   });
@@ -736,6 +778,14 @@ function revealAnswer() {
   showFeedback("warning", `Answer revealed: ${qa.answer}`);
 }
 
+function skipWord() {
+  if (!state.session || state.session.completed) {
+    return;
+  }
+  hideFeedback();
+  nextQuestion();
+}
+
 function flipFlashcard() {
   if (!state.session) {
     return;
@@ -1010,6 +1060,9 @@ function wireEvents() {
 
   elements.checkAnswerButton.addEventListener("click", checkWrittenAnswer);
   elements.revealAnswerButton.addEventListener("click", revealAnswer);
+  elements.skipWordButton.addEventListener("click", skipWord);
+  elements.skipWordButtonChoice.addEventListener("click", skipWord);
+  elements.skipWordButtonFlashcard.addEventListener("click", skipWord);
   elements.flipFlashcardButton.addEventListener("click", flipFlashcard);
   elements.previousFlashcardButton.addEventListener("click", () => {
     if (state.session && state.session.index > 0) {

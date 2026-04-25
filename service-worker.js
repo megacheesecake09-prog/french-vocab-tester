@@ -1,11 +1,11 @@
-const CACHE_NAME = "french-vocab-tester-v4";
+const CACHE_NAME = "french-vocab-tester-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260425b",
-  "./app.js?v=20260425b",
-  "./data.js?v=20260425b",
-  "./manifest.webmanifest?v=20260425b",
+  "./styles.css?v=20260425c",
+  "./app.js?v=20260425c",
+  "./data.js?v=20260425c",
+  "./manifest.webmanifest?v=20260425c",
   "./icon.svg",
   "./icon-192.png",
   "./icon-512.png",
