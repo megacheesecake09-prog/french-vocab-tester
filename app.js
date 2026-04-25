@@ -879,9 +879,6 @@ function showFeedback(type, message) {
   elements.feedbackBox.className = `feedback-box ${type}`;
   elements.feedbackBox.textContent = message;
   elements.feedbackBox.classList.remove("hidden");
-  window.requestAnimationFrame(() => {
-    elements.feedbackBox.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
 }
 
 function hideFeedback() {
@@ -1131,11 +1128,6 @@ function wireEvents() {
     if (event.key === "Enter") {
       checkWrittenAnswer();
     }
-  });
-  elements.answerInput.addEventListener("focus", () => {
-    window.setTimeout(() => {
-      elements.answerInput.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 250);
   });
   elements.resetAppButton.addEventListener("click", resetProgress);
 

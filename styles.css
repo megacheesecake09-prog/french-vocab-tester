@@ -548,9 +548,7 @@ th {
   }
 
   .feedback-box {
-    position: sticky;
-    top: 8px;
-    z-index: 2;
+    position: static;
     font-size: 1rem;
     box-shadow: 0 10px 24px rgba(15, 59, 87, 0.12);
   }
@@ -595,7 +593,4 @@ th {
     font-size: 0.76rem;
   }
 
-  .feedback-box {
-    top: 4px;
-  }
 }
