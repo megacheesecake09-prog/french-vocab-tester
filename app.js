@@ -16,11 +16,13 @@ const PART_OF_SPEECH_LABELS = {
   intj: "Interjection",
   num: "Number",
   mwp: "Multi-word phrase",
+  other: "Other",
 };
 
 const state = {
-  dataset: window.FRENCH_VOCAB_DATA || { foundation: [], higher: [] },
+  dataset: window.FRENCH_VOCAB_DATA || { gcse: { foundation: [], higher: [] }, alevel: [] },
   filters: {
+    course: "gcse",
     tier: "higher",
     studyMode: "written",
     direction: "fr-en",
@@ -46,6 +48,7 @@ const state = {
 };
 
 const elements = {
+  courseSelect: document.getElementById("courseSelect"),
   tierSelect: document.getElementById("tierSelect"),
   studyModeSelect: document.getElementById("studyModeSelect"),
   directionSelect: document.getElementById("directionSelect"),
@@ -308,18 +311,32 @@ function buildAcceptedAnswers(answer, direction, requireAccents) {
   return accepted;
 }
 
-function getAllForTier(tier) {
-  return state.dataset[tier] || [];
+function getGcseWordsForTier(tier) {
+  if (tier === "both") {
+    return [
+      ...(state.dataset.gcse?.foundation || []),
+      ...(state.dataset.gcse?.higher || []),
+    ];
+  }
+  return state.dataset.gcse?.[tier] || [];
+}
+
+function getCoursePool() {
+  if (state.filters.course === "alevel") {
+    return state.dataset.alevel || [];
+  }
+  if (state.filters.course === "both") {
+    return [...getGcseWordsForTier(state.filters.tier), ...(state.dataset.alevel || [])];
+  }
+  return getGcseWordsForTier(state.filters.tier);
 }
 
 function getSubjectList() {
-  return dedupe(getAllForTier(state.filters.tier).map((item) => item.subject)).sort((a, b) =>
-    a.localeCompare(b),
-  );
+  return dedupe(getCoursePool().map((item) => item.subject)).sort((a, b) => a.localeCompare(b));
 }
 
 function getPosList() {
-  return dedupe(getAllForTier(state.filters.tier).map((item) => item.partOfSpeech)).sort((a, b) =>
+  return dedupe(getCoursePool().map((item) => item.partOfSpeech || "other")).sort((a, b) =>
     a.localeCompare(b),
   );
 }
@@ -362,7 +379,7 @@ function isLikelyFrenchInfinitive(lemma) {
 }
 
 function isPracticeVerb(item) {
-  if (item.partOfSpeech !== "v") {
+  if ((item.partOfSpeech || "other") !== "v") {
     return true;
   }
 
@@ -370,6 +387,19 @@ function isPracticeVerb(item) {
   const english = item.english.toLowerCase();
   const lemma = getFrenchLemma(item.french);
   return english.startsWith("to ") || isLikelyFrenchInfinitive(lemma);
+}
+
+function getCourseLabel(item) {
+  if (item.course === "alevel") {
+    return "A-level";
+  }
+  if (item.tier === "higher") {
+    return item.isHtOnly ? "GCSE Higher only" : "GCSE Higher";
+  }
+  if (item.tier === "foundation") {
+    return "GCSE Foundation";
+  }
+  return "GCSE";
 }
 
 function ensureFilterDefaults() {
@@ -421,17 +451,17 @@ function renderFilters() {
 }
 
 function getFilteredWords() {
-  const words = getAllForTier(state.filters.tier).filter((item) => {
+  const words = getCoursePool().filter((item) => {
     if (!isPracticeVerb(item)) {
       return false;
     }
     if (!state.filters.subjects.has(item.subject)) {
       return false;
     }
-    if (!state.filters.partsOfSpeech.has(item.partOfSpeech)) {
+    if (!state.filters.partsOfSpeech.has(item.partOfSpeech || "other")) {
       return false;
     }
-    if (state.filters.htOnly && !item.isHtOnly) {
+    if (state.filters.htOnly && !(item.course === "gcse" && item.isHtOnly)) {
       return false;
     }
     if (state.filters.starredOnly && !state.starred.has(item.id)) {
@@ -483,8 +513,8 @@ function renderTable(words) {
       <td>${escapeHtml(item.french)}</td>
       <td>${escapeHtml(item.english)}</td>
       <td>${escapeHtml(item.subject)}</td>
-      <td>${escapeHtml(PART_OF_SPEECH_LABELS[item.partOfSpeech] || item.partOfSpeech)}</td>
-      <td>${item.tier === "higher" ? "Higher" : "Foundation"}${item.isHtOnly ? " (HT only)" : ""}</td>
+      <td>${escapeHtml(PART_OF_SPEECH_LABELS[item.partOfSpeech] || item.partOfSpeech || "Other")}</td>
+      <td>${escapeHtml(getCourseLabel(item))}</td>
       <td>${state.starred.has(item.id) ? "Yes" : ""}</td>
     `;
     elements.wordsTableBody.append(row);
@@ -663,9 +693,8 @@ function renderQuestion() {
   elements.scoreLabel.textContent = String(state.session.score);
   elements.questionSubject.textContent = word.subject;
   elements.questionPartOfSpeech.textContent =
-    PART_OF_SPEECH_LABELS[word.partOfSpeech] || word.partOfSpeech;
-  elements.questionTier.textContent =
-    word.tier === "higher" ? (word.isHtOnly ? "Higher only" : "Higher") : "Foundation";
+    PART_OF_SPEECH_LABELS[word.partOfSpeech] || word.partOfSpeech || "Other";
+  elements.questionTier.textContent = getCourseLabel(word);
   elements.directionLabel.textContent = qa.label;
   elements.promptText.textContent = qa.prompt;
   elements.hintText.textContent = buildHint(word, qa);
@@ -705,15 +734,18 @@ function buildHint(word, qa) {
     notes.push(`Subject hidden in challenge of answer review only.`);
   } else {
     notes.push(word.subject);
+    if (word.course === "alevel" && word.theme) {
+      notes.push(word.theme);
+    }
   }
   return notes.join(" • ");
 }
 
 function renderMultipleChoice(word, answer) {
   const direction = getCurrentDirection();
-  const pool = getAllForTier(state.filters.tier).filter((item) => item.id !== word.id);
+  const pool = getCoursePool().filter((item) => item.id !== word.id);
   const distractorSource = pool.filter((item) =>
-    state.filters.hardMode ? item.partOfSpeech === word.partOfSpeech : true,
+    state.filters.hardMode ? (item.partOfSpeech || "other") === (word.partOfSpeech || "other") : true,
   );
   const distractors = shuffle(distractorSource)
     .slice(0, 3)
@@ -1005,15 +1037,18 @@ function resetProgress() {
 
 function syncFiltersFromUi() {
   const requestedLimit = Number(elements.wordLimitInput.value);
-  const tierSize = getAllForTier(elements.tierSelect.value).length;
+  const previousCourse = state.filters.course;
+  const previousTier = state.filters.tier;
 
+  state.filters.course = elements.courseSelect.value;
   state.filters.tier = elements.tierSelect.value;
   state.filters.studyMode = elements.studyModeSelect.value;
   state.filters.direction = elements.directionSelect.value;
   state.filters.sessionType = elements.sessionTypeSelect.value;
+  const selectionSize = getCoursePool().length;
   state.filters.wordLimit = Number.isFinite(requestedLimit) && requestedLimit > 0
-    ? clamp(requestedLimit, 5, Math.max(5, tierSize))
-    : tierSize;
+    ? clamp(requestedLimit, 5, Math.max(5, selectionSize))
+    : selectionSize;
   state.filters.shuffle = elements.shuffleToggle.checked;
   state.filters.hardMode = elements.hardModeToggle.checked;
   state.filters.extremeMode = elements.extremeModeToggle.checked;
@@ -1022,6 +1057,17 @@ function syncFiltersFromUi() {
   state.filters.starredOnly = elements.starredOnlyToggle.checked;
   state.filters.startFrom = elements.startLettersFrom.value;
   state.filters.startTo = elements.startLettersTo.value;
+
+  const usesGcse = state.filters.course !== "alevel";
+  elements.tierSelect.disabled = state.filters.course === "alevel";
+  elements.htOnlyToggle.disabled = state.filters.course === "alevel";
+  if (state.filters.course === "alevel") {
+    state.filters.htOnly = false;
+    elements.htOnlyToggle.checked = false;
+  }
+  elements.tierSelect.closest(".field")?.classList.toggle("muted-field", !usesGcse);
+
+  return previousCourse !== state.filters.course || previousTier !== state.filters.tier;
 }
 
 function clamp(value, min, max) {
@@ -1030,6 +1076,7 @@ function clamp(value, min, max) {
 
 function wireEvents() {
   [
+    elements.courseSelect,
     elements.tierSelect,
     elements.studyModeSelect,
     elements.directionSelect,
@@ -1045,9 +1092,8 @@ function wireEvents() {
     elements.starredOnlyToggle,
   ].forEach((node) =>
     node.addEventListener("change", () => {
-      const previousTier = state.filters.tier;
-      syncFiltersFromUi();
-      if (previousTier !== state.filters.tier) {
+      const selectionChanged = syncFiltersFromUi();
+      if (selectionChanged) {
         state.filters.subjects.clear();
         state.filters.partsOfSpeech.clear();
         renderFilters();
@@ -1087,7 +1133,7 @@ function wireEvents() {
   });
   elements.viewWordsButton.addEventListener("click", showTable);
   elements.tryIncorrectButton.addEventListener("click", () => {
-    const focusWords = getAllForTier(state.filters.tier).filter((item) => state.focusMap.has(item.id));
+    const focusWords = getCoursePool().filter((item) => state.focusMap.has(item.id));
     startSession({ words: focusWords, studyMode: state.filters.studyMode });
   });
 

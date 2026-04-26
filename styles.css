@@ -149,6 +149,10 @@ select {
   background: rgba(255, 255, 255, 0.8);
 }
 
+.muted-field {
+  opacity: 0.62;
+}
+
 .inline-inputs {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
