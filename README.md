@@ -1,6 +1,6 @@
-# GCSE French Vocabulary Tester
+# Pearson Edexcel Vocabulary Tester
 
-This is a mobile-friendly installable web app built from the Pearson Edexcel French vocabulary workbooks for GCSE and A-level.
+This is a mobile-friendly installable web app built from the Pearson Edexcel vocabulary workbooks for GCSE French, GCSE German, and A-level French.
 
 There are now two versions in this folder:
 
@@ -9,10 +9,10 @@ There are now two versions in this folder:
 
 ## Features
 
-- Foundation and Higher tier vocabulary
-- A-level French vocabulary
+- Foundation and Higher tier GCSE vocabulary
+- GCSE French, GCSE German, and A-level French
 - GCSE, A-level, or combined study
-- French to English, English to French, or mixed direction
+- Target-language to English, English to target-language, or mixed direction
 - Written answers, multiple choice, flashcards, and mixed practice
 - Subject and part-of-speech filters
 - Starred words and a focus list for missed or revealed answers

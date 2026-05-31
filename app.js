@@ -20,9 +20,17 @@ const PART_OF_SPEECH_LABELS = {
 };
 
 const state = {
-  dataset: window.FRENCH_VOCAB_DATA || { gcse: { foundation: [], higher: [] }, alevel: [] },
+  dataset:
+    window.FRENCH_VOCAB_DATA || {
+      gcse: {
+        french: { foundation: [], higher: [] },
+        german: { foundation: [], higher: [] },
+      },
+      alevel: { french: [] },
+    },
   filters: {
     course: "gcse",
+    gcseLanguage: "french",
     tier: "higher",
     studyMode: "written",
     direction: "fr-en",
@@ -50,6 +58,7 @@ const state = {
 const elements = {
   courseSelect: document.getElementById("courseSelect"),
   tierSelect: document.getElementById("tierSelect"),
+  gcseLanguageSelect: document.getElementById("gcseLanguageSelect"),
   studyModeSelect: document.getElementById("studyModeSelect"),
   directionSelect: document.getElementById("directionSelect"),
   sessionTypeSelect: document.getElementById("sessionTypeSelect"),
@@ -311,24 +320,33 @@ function buildAcceptedAnswers(answer, direction, requireAccents) {
   return accepted;
 }
 
-function getGcseWordsForTier(tier) {
+function getGcseWordsForTier(language, tier) {
+  const pool = state.dataset.gcse?.[language] || { foundation: [], higher: [] };
   if (tier === "both") {
-    return [
-      ...(state.dataset.gcse?.foundation || []),
-      ...(state.dataset.gcse?.higher || []),
-    ];
+    return [...(pool.foundation || []), ...(pool.higher || [])];
   }
-  return state.dataset.gcse?.[tier] || [];
+  return pool[tier] || [];
 }
 
 function getCoursePool() {
   if (state.filters.course === "alevel") {
-    return state.dataset.alevel || [];
+    return state.dataset.alevel?.french || [];
   }
+
+  const gcseLanguage = state.filters.gcseLanguage;
+  const gcsePool =
+    gcseLanguage === "both"
+      ? [
+          ...getGcseWordsForTier("french", state.filters.tier),
+          ...getGcseWordsForTier("german", state.filters.tier),
+        ]
+      : getGcseWordsForTier(gcseLanguage, state.filters.tier);
+
   if (state.filters.course === "both") {
-    return [...getGcseWordsForTier(state.filters.tier), ...(state.dataset.alevel || [])];
+    return [...gcsePool, ...(state.dataset.alevel?.french || [])];
   }
-  return getGcseWordsForTier(state.filters.tier);
+
+  return gcsePool;
 }
 
 function getSubjectList() {
@@ -341,8 +359,8 @@ function getPosList() {
   );
 }
 
-function getFrenchLemma(french) {
-  return String(french)
+function getTargetLemma(value) {
+  return String(value)
     .split("|")[0]
     .trim()
     .replace(/[*!…]/g, "")
@@ -359,7 +377,7 @@ function isLikelyFrenchInfinitive(lemma) {
   const irregularInfinitives = new Set([
     "avoir",
     "etre",
-    "être",
+    "etre",
     "aller",
     "faire",
     "pouvoir",
@@ -378,28 +396,89 @@ function isLikelyFrenchInfinitive(lemma) {
   return /(er|ir|re|oir)$/.test(lemma);
 }
 
+function isLikelyGermanInfinitive(lemma) {
+  if (!lemma) {
+    return false;
+  }
+
+  const irregularInfinitives = new Set([
+    "sein",
+    "haben",
+    "werden",
+    "tun",
+    "gehen",
+    "kommen",
+    "geben",
+    "sehen",
+    "essen",
+    "fahren",
+    "finden",
+    "lassen",
+    "bleiben",
+    "bringen",
+    "nehmen",
+    "wissen",
+    "sprechen",
+    "lesen",
+    "schreiben",
+    "tragen",
+    "treffen",
+    "stehen",
+    "laufen",
+    "helfen",
+    "halten",
+    "denken",
+    "ziehen",
+    "sitzen",
+    "singen",
+    "liegen",
+    "heißen",
+    "kaufen",
+    "wohnen",
+    "machen",
+    "spielen",
+    "arbeiten",
+    "lernen",
+    "reisen",
+    "sammeln",
+    "verstehen",
+    "vergessen",
+    "beginnen",
+    "empfehlen",
+  ]);
+
+  if (irregularInfinitives.has(lemma)) {
+    return true;
+  }
+
+  return /(en|ern|eln|n)$/.test(lemma) && !/^(bin|bist|ist|sind|seid|war|waren|wurde|wurden)$/.test(lemma);
+}
+
 function isPracticeVerb(item) {
   if ((item.partOfSpeech || "other") !== "v") {
     return true;
   }
 
-  // The Pearson sheet includes many conjugated forms; keep normal practice to infinitives only.
+  // Keep normal practice to infinitives only.
   const english = item.english.toLowerCase();
-  const lemma = getFrenchLemma(item.french);
+  const lemma = getTargetLemma(item.french);
+  if ((item.language || "French") === "German") {
+    return english.startsWith("to ") || isLikelyGermanInfinitive(lemma);
+  }
   return english.startsWith("to ") || isLikelyFrenchInfinitive(lemma);
 }
 
 function getCourseLabel(item) {
-  if (item.course === "alevel") {
-    return "A-level";
+  if (item.course === "alevel-french") {
+    return "A-level French";
   }
-  if (item.tier === "higher") {
-    return item.isHtOnly ? "GCSE Higher only" : "GCSE Higher";
+  if (item.course === "gcse-german") {
+    return item.tier === "higher" ? "GCSE German Higher" : "GCSE German Foundation";
   }
-  if (item.tier === "foundation") {
-    return "GCSE Foundation";
+  if (item.course === "gcse-french") {
+    return item.tier === "higher" ? "GCSE French Higher" : "GCSE French Foundation";
   }
-  return "GCSE";
+  return "Course";
 }
 
 function ensureFilterDefaults() {
@@ -461,7 +540,7 @@ function getFilteredWords() {
     if (!state.filters.partsOfSpeech.has(item.partOfSpeech || "other")) {
       return false;
     }
-    if (state.filters.htOnly && !(item.course === "gcse" && item.isHtOnly)) {
+    if (state.filters.htOnly && !(item.course.startsWith("gcse") && item.isHtOnly)) {
       return false;
     }
     if (state.filters.starredOnly && !state.starred.has(item.id)) {
@@ -618,6 +697,8 @@ function finishSession(message) {
       score,
       total,
       date: new Date().toISOString(),
+      course: state.filters.course,
+      gcseLanguage: state.filters.gcseLanguage,
       tier: state.filters.tier,
     };
     renderLeaderboard();
@@ -654,13 +735,18 @@ function getCurrentDirection() {
   return state.session.index % 2 === 0 ? "fr-en" : "en-fr";
 }
 
+function getTargetLanguageName(word) {
+  return (word?.language || "French").toString() === "German" ? "German" : "French";
+}
+
 function getPromptAndAnswer(word) {
   const direction = getCurrentDirection();
+  const targetLanguage = getTargetLanguageName(word);
   if (direction === "en-fr") {
     return {
       prompt: word.english,
       answer: word.french,
-      label: "Translate into French",
+      label: `Translate into ${targetLanguage}`,
     };
   }
   return {
@@ -695,7 +781,10 @@ function renderQuestion() {
   elements.questionPartOfSpeech.textContent =
     PART_OF_SPEECH_LABELS[word.partOfSpeech] || word.partOfSpeech || "Other";
   elements.questionTier.textContent = getCourseLabel(word);
-  elements.directionLabel.textContent = qa.label;
+  elements.directionLabel.textContent =
+    getCurrentDirection() === "en-fr"
+      ? qa.label
+      : `${getTargetLanguageName(word)} to English`;
   elements.promptText.textContent = qa.prompt;
   elements.hintText.textContent = buildHint(word, qa);
 
@@ -734,7 +823,7 @@ function buildHint(word, qa) {
     notes.push(`Subject hidden in challenge of answer review only.`);
   } else {
     notes.push(word.subject);
-    if (word.course === "alevel" && word.theme) {
+    if (word.course === "alevel-french" && word.theme) {
       notes.push(word.theme);
     }
   }
@@ -959,7 +1048,8 @@ function renderLeaderboard() {
     .slice(0, 5)
     .forEach((entry) => {
       const item = document.createElement("li");
-      item.textContent = `${entry.name}: ${entry.score}/${entry.total} (${entry.tier})`;
+      const label = entry.course || entry.tier;
+      item.textContent = `${entry.name}: ${entry.score}/${entry.total} (${label})`;
       elements.leaderboardList.append(item);
     });
 }
@@ -985,7 +1075,7 @@ function exportFocusList() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "french-focus-list.json";
+  link.download = "vocab-focus-list.json";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -1039,8 +1129,10 @@ function syncFiltersFromUi() {
   const requestedLimit = Number(elements.wordLimitInput.value);
   const previousCourse = state.filters.course;
   const previousTier = state.filters.tier;
+  const previousLanguage = state.filters.gcseLanguage;
 
   state.filters.course = elements.courseSelect.value;
+  state.filters.gcseLanguage = elements.gcseLanguageSelect.value;
   state.filters.tier = elements.tierSelect.value;
   state.filters.studyMode = elements.studyModeSelect.value;
   state.filters.direction = elements.directionSelect.value;
@@ -1061,13 +1153,19 @@ function syncFiltersFromUi() {
   const usesGcse = state.filters.course !== "alevel";
   elements.tierSelect.disabled = state.filters.course === "alevel";
   elements.htOnlyToggle.disabled = state.filters.course === "alevel";
+  elements.gcseLanguageSelect.disabled = state.filters.course === "alevel";
   if (state.filters.course === "alevel") {
     state.filters.htOnly = false;
     elements.htOnlyToggle.checked = false;
   }
   elements.tierSelect.closest(".field")?.classList.toggle("muted-field", !usesGcse);
+  elements.gcseLanguageSelect.closest(".field")?.classList.toggle("muted-field", !usesGcse);
 
-  return previousCourse !== state.filters.course || previousTier !== state.filters.tier;
+  return (
+    previousCourse !== state.filters.course ||
+    previousTier !== state.filters.tier ||
+    previousLanguage !== state.filters.gcseLanguage
+  );
 }
 
 function clamp(value, min, max) {
@@ -1078,6 +1176,7 @@ function wireEvents() {
   [
     elements.courseSelect,
     elements.tierSelect,
+    elements.gcseLanguageSelect,
     elements.studyModeSelect,
     elements.directionSelect,
     elements.sessionTypeSelect,

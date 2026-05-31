@@ -1,6 +1,6 @@
 {
-  "name": "GCSE French Vocabulary Tester",
-  "short_name": "French Vocab",
+  "name": "Pearson Edexcel Vocabulary Tester",
+  "short_name": "Vocab Tester",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
